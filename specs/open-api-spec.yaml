@@ -74,6 +74,10 @@ paths:
                         - org_01EHWNCE74X7JSDV0X3SZ3KJNY
                   description: Who may mint sessions from this blueprint.
                 session_settings:
+                  default:
+                    max_age_seconds: 3600
+                    access_token_ttl_seconds: 300
+                    refresh_token_ttl_seconds: 3600
                   type: object
                   properties:
                     max_age_seconds:
@@ -110,7 +114,6 @@ paths:
                     blueprint.
               required:
                 - name
-                - session_settings
               description: Configuration for the new agent blueprint.
       responses:
         '201':
@@ -972,6 +975,139 @@ paths:
                 required:
                   - message
       summary: Mint an agent token
+      tags:
+        - agents.blueprints.tokens
+      x-feature-flag: agent-blueprints-public-api
+  /agents/blueprints/{agent_blueprint_id}/tokens/validate:
+    post:
+      description: >-
+        Validates an agent access token: verifies its signature against the
+        environment, that it was minted under this blueprint, and that the
+        backing session is live (not revoked or expired, and — for delegated
+        sessions — that the delegating user session has not ended). Returns the
+        token claims and session metadata when valid; invalid tokens are
+        reported as errors with stable codes.
+      operationId: AgentBlueprintsTokenController_validateToken
+      parameters:
+        - name: agent_blueprint_id
+          required: true
+          in: path
+          description: The unique ID of the agent blueprint.
+          schema:
+            type: string
+            example: agent_blueprint_01EHWNCE74X7JSDV0X3SZ3KJNY
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agent_access_token:
+                  type: string
+                  minLength: 1
+                  description: The agent access token (a JWT) to validate.
+                  example: eyJhbGciOiJSUzI1NiIsImtpZCI6...
+              required:
+                - agent_access_token
+              description: The agent access token to validate.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTokenValidation'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: invalid_request
+                        const: invalid_request
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: invalid_agent_access_token
+                        const: invalid_agent_access_token
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: session_revoked
+                        const: session_revoked
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: session_expired
+                        const: session_expired
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: user_session_ended
+                        const: user_session_ended
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
+      summary: Validate an agent token
       tags:
         - agents.blueprints.tokens
       x-feature-flag: agent-blueprints-public-api
@@ -3506,7 +3642,7 @@ paths:
       summary: Check authorization
       tags:
         - authorization
-      x-mutually-exclusive-body-groups: &ref_3
+      x-mutually-exclusive-body-groups: &ref_4
         resource_target:
           optional: false
           variants:
@@ -4149,7 +4285,7 @@ paths:
       summary: Assign a role
       tags:
         - authorization
-      x-mutually-exclusive-body-groups: &ref_4
+      x-mutually-exclusive-body-groups: &ref_5
         resource_target:
           optional: false
           variants:
@@ -4220,7 +4356,7 @@ paths:
       summary: Remove a role assignment
       tags:
         - authorization
-      x-mutually-exclusive-body-groups: &ref_5
+      x-mutually-exclusive-body-groups: &ref_6
         resource_target:
           optional: false
           variants:
@@ -6643,7 +6779,7 @@ paths:
       summary: Create an authorization resource
       tags:
         - authorization
-      x-mutually-exclusive-body-groups: &ref_6
+      x-mutually-exclusive-body-groups: &ref_7
         parent_resource:
           optional: true
           variants:
@@ -8782,7 +8918,7 @@ paths:
       tags:
         - connections
       x-feature-flag: connections-api-migrations-capabilities-api
-      x-mutually-exclusive-body-groups: &ref_7
+      x-mutually-exclusive-body-groups: &ref_8
         protocol_options:
           optional: false
           variants:
@@ -10010,7 +10146,7 @@ paths:
       tags:
         - connections
       x-feature-flag: connections-api-migrations-capabilities-api
-      x-mutually-exclusive-body-groups: &ref_10
+      x-mutually-exclusive-body-groups: &ref_11
         protocol_options:
           optional: true
           variants:
@@ -12964,6 +13100,14 @@ paths:
       summary: Set Retention
       tags:
         - audit-logs
+      x-mutually-exclusive-body-groups: &ref_3
+        retention:
+          optional: false
+          variants:
+            period:
+              - retention_period
+            period_in_days:
+              - retention_period_in_days
   /organizations/{organizationId}/api_keys:
     get:
       description: Get a list of all API keys for an organization.
@@ -15396,7 +15540,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenBodyDto'
+              $ref: '#/components/schemas/TokenQueryDto'
       responses:
         '200':
           description: OK
@@ -15786,6 +15930,53 @@ paths:
                     - code
                     - pending_authentication_token
                     - authentication_challenge_id
+                - type: object
+                  properties:
+                    client_id:
+                      type: string
+                      description: The client ID of the application.
+                      example: client_01HXYZ123456789ABCDEFGHIJ
+                    client_secret:
+                      type: string
+                      description: The client secret of the application.
+                      example: sk_test_....
+                    grant_type:
+                      type: string
+                      const: urn:workos:oauth:grant-type:email-completion
+                    email_completion_token:
+                      type: string
+                      description: The token from the `email_completion_required` response.
+                      example: JZ8kQ2mR5vT7wX1yA3bC6dE9f
+                    email:
+                      type: string
+                      description: >-
+                        The email address the user supplied for a profile the
+                        identity provider left without one.
+                      example: marcelina@example.com
+                    ip_address:
+                      type: string
+                      description: The IP address of the user's request.
+                      example: 203.0.113.42
+                    device_id:
+                      type: string
+                      description: A unique identifier for the device.
+                      example: device_01HXYZ123456789ABCDEFGHIJ
+                    user_agent:
+                      type: string
+                      description: The user agent string from the user's browser.
+                      example: Mozilla/5.0
+                    signals_id:
+                      type: string
+                      description: >-
+                        An optional Radar signals ID to correlate client-side
+                        signals with this authentication attempt.
+                      example: 01JBS0GN92GC2RJQS4X9DBPQ2A
+                  required:
+                    - client_id
+                    - client_secret
+                    - grant_type
+                    - email_completion_token
+                    - email
                 - type: object
                   properties:
                     client_id:
@@ -16542,6 +16733,27 @@ paths:
                     required:
                       - code
                       - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: email_completion_required
+                        const: email_completion_required
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                      email_completion_token:
+                        type: string
+                        description: >-
+                          Pass this to the `email-completion` grant, with the
+                          address the user supplies, to finish authenticating.
+                        example: JZ8kQ2mR5vT7wX1yA3bC6dE9f
+                    required:
+                      - code
+                      - message
+                      - email_completion_token
                   - type: object
                     properties:
                       code:
@@ -18616,7 +18828,7 @@ paths:
       summary: Create an organization membership
       tags:
         - user-management.organization-membership
-      x-mutually-exclusive-body-groups: &ref_14
+      x-mutually-exclusive-body-groups: &ref_15
         role:
           optional: true
           variants:
@@ -18800,7 +19012,7 @@ paths:
       summary: Update an organization membership
       tags:
         - user-management.organization-membership
-      x-mutually-exclusive-body-groups: &ref_15
+      x-mutually-exclusive-body-groups: &ref_16
         role:
           optional: true
           variants:
@@ -20120,7 +20332,7 @@ paths:
       summary: Create a user
       tags:
         - user-management.users
-      x-mutually-exclusive-body-groups: &ref_16
+      x-mutually-exclusive-body-groups: &ref_17
         password:
           optional: true
           variants:
@@ -20413,7 +20625,7 @@ paths:
       summary: Update a user
       tags:
         - user-management.users
-      x-mutually-exclusive-body-groups: &ref_20
+      x-mutually-exclusive-body-groups: &ref_21
         password:
           optional: true
           variants:
@@ -24344,16 +24556,70 @@ components:
         - range_start
         - range_end
     UpdateAuditLogsRetentionDto:
-      type: object
-      properties:
-        retention_period_in_days:
-          type: integer
-          description: >-
-            The number of days Audit Log events will be retained. Valid values
-            are `30` and `365`.
-          example: 30
-      required:
-        - retention_period_in_days
+      x-mutually-exclusive-body-groups: *ref_3
+      oneOf:
+        - type: object
+          properties:
+            retention_period:
+              enum:
+                - 1_MONTH
+                - 2_MONTHS
+                - 3_MONTHS
+                - 4_MONTHS
+                - 5_MONTHS
+                - 6_MONTHS
+                - 7_MONTHS
+                - 8_MONTHS
+                - 9_MONTHS
+                - 10_MONTHS
+                - 11_MONTHS
+                - 1_YEAR
+                - 2_YEARS
+                - 3_YEARS
+                - 4_YEARS
+                - 5_YEARS
+                - 6_YEARS
+                - 7_YEARS
+                - 8_YEARS
+                - 9_YEARS
+                - 10_YEARS
+              type: string
+              description: >-
+                The period Audit Log events will be retained. Valid values are
+                `1_MONTH` through `11_MONTHS` in one-month increments and
+                `1_YEAR` through `10_YEARS` in one-year increments. Mutually
+                exclusive with `retention_period_in_days`.
+              example: 1_MONTH
+          required:
+            - retention_period
+          not:
+            anyOf:
+              - properties:
+                  retention_period_in_days:
+                    x-exclude-from-lint: true
+                required:
+                  - retention_period_in_days
+        - type: object
+          properties:
+            retention_period_in_days:
+              type: integer
+              description: >-
+                The number of days Audit Log events will be retained. Valid
+                values are `30` through `330` in 30-day increments and `365`
+                through `3650` in 365-day increments. Deprecated: use
+                `retention_period` instead. Mutually exclusive with
+                `retention_period`.
+              example: 30
+              deprecated: true
+          required:
+            - retention_period_in_days
+          not:
+            anyOf:
+              - properties:
+                  retention_period:
+                    x-exclude-from-lint: true
+                required:
+                  - retention_period
     AuditLogSchemaActorDto:
       type: object
       properties:
@@ -24473,7 +24739,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - resource_id
-      x-mutually-exclusive-body-groups: *ref_3
+      x-mutually-exclusive-body-groups: *ref_4
     CreateGroupRoleAssignmentDto:
       type: object
       properties:
@@ -24614,7 +24880,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - resource_id
-      x-mutually-exclusive-body-groups: *ref_4
+      x-mutually-exclusive-body-groups: *ref_5
     RemoveRoleDto:
       allOf:
         - type: object
@@ -24673,7 +24939,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - resource_id
-      x-mutually-exclusive-body-groups: *ref_5
+      x-mutually-exclusive-body-groups: *ref_6
     SetRolePermissionsDto:
       type: object
       properties:
@@ -25023,7 +25289,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - parent_resource_id
-      x-mutually-exclusive-body-groups: *ref_6
+      x-mutually-exclusive-body-groups: *ref_7
     CreateConnectionKeyPairDto:
       type: object
       properties:
@@ -25140,7 +25406,7 @@ components:
           default: true
         token_authentication_method:
           type: string
-          enum: &ref_8
+          enum: &ref_9
             - client_secret_post
             - client_secret_basic
             - private_key_jwt
@@ -25156,7 +25422,7 @@ components:
           $ref: '#/components/schemas/CreateConnectionKeyPairDto'
         id_token_signature_algorithm:
           type: string
-          enum: &ref_9
+          enum: &ref_10
             - ES256
             - ES384
             - ES512
@@ -25312,7 +25578,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - saml_options
-      x-mutually-exclusive-body-groups: *ref_7
+      x-mutually-exclusive-body-groups: *ref_8
     PatchConnectionSamlOptionsDto:
       type: object
       properties:
@@ -25388,7 +25654,7 @@ components:
           example: true
         token_authentication_method:
           type: string
-          enum: *ref_8
+          enum: *ref_9
           description: >-
             The token-endpoint client authentication method. Moving to
             `private_key_jwt` generates a signing key pair if the connection has
@@ -25398,7 +25664,7 @@ components:
           example: client_secret_basic
         id_token_signature_algorithm:
           type: string
-          enum: *ref_9
+          enum: *ref_10
           description: The ID-token signing algorithm.
           example: RS256
         fetch_user_info:
@@ -25542,7 +25808,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - saml_options
-      x-mutually-exclusive-body-groups: *ref_10
+      x-mutually-exclusive-body-groups: *ref_11
     CreateCorsOriginDto:
       type: object
       properties:
@@ -25724,11 +25990,11 @@ components:
           type:
             - object
             - 'null'
-          additionalProperties: &ref_11
+          additionalProperties: &ref_12
             type: string
             maxLength: 600
           maxProperties: 50
-          example: &ref_12
+          example: &ref_13
             tier: diamond
           description: >-
             Object containing [metadata](/authkit/metadata) key/value pairs
@@ -25783,9 +26049,9 @@ components:
           type:
             - object
             - 'null'
-          additionalProperties: *ref_11
+          additionalProperties: *ref_12
           maxProperties: 50
-          example: *ref_12
+          example: *ref_13
           description: >-
             Object containing [metadata](/authkit/metadata) key/value pairs
             associated with the Organization.
@@ -25919,7 +26185,7 @@ components:
           example: application/x-www-form-urlencoded
         authenticate_via:
           type: string
-          enum: &ref_13
+          enum: &ref_14
             - request_body
             - basic_auth_header
           description: >-
@@ -26075,7 +26341,7 @@ components:
           example: application/x-www-form-urlencoded
         authenticate_via:
           type: string
-          enum: *ref_13
+          enum: *ref_14
           description: >-
             How client credentials are sent when exchanging authorization codes
             and refreshing tokens.
@@ -26640,9 +26906,9 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - role_slug
-      x-mutually-exclusive-body-groups: *ref_14
-    UpdateUserlandUserOrganizationMembershipDto:
       x-mutually-exclusive-body-groups: *ref_15
+    UpdateUserlandUserOrganizationMembershipDto:
+      x-mutually-exclusive-body-groups: *ref_16
       oneOf:
         - type: object
           not:
@@ -26764,9 +27030,9 @@ components:
               type:
                 - object
                 - 'null'
-              additionalProperties: *ref_11
+              additionalProperties: *ref_12
               maxProperties: 50
-              example: &ref_17
+              example: &ref_18
                 timezone: America/New_York
               description: >-
                 Object containing metadata key/value pairs associated with the
@@ -26865,7 +27131,7 @@ components:
                   example: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
                 password_hash_type:
                   type: string
-                  enum: &ref_18
+                  enum: &ref_19
                     - bcrypt
                     - firebase-scrypt
                     - ssha
@@ -26880,7 +27146,7 @@ components:
                   example: bcrypt
                 password_salt_position:
                   type: string
-                  enum: &ref_19
+                  enum: &ref_20
                     - prefix
                     - suffix
                   description: >-
@@ -26901,7 +27167,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - password
-      x-mutually-exclusive-body-groups: *ref_16
+      x-mutually-exclusive-body-groups: *ref_17
     UpdateUserlandUserDto:
       allOf:
         - type: object
@@ -26931,9 +27197,9 @@ components:
               type:
                 - object
                 - 'null'
-              additionalProperties: *ref_11
+              additionalProperties: *ref_12
               maxProperties: 50
-              example: *ref_17
+              example: *ref_18
               description: >-
                 Object containing metadata key/value pairs associated with the
                 user.
@@ -27015,7 +27281,7 @@ components:
                   example: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
                 password_hash_type:
                   type: string
-                  enum: *ref_18
+                  enum: *ref_19
                   description: >-
                     The algorithm originally used to hash the password, used
                     when providing a `password_hash`. Required with
@@ -27023,7 +27289,7 @@ components:
                   example: bcrypt
                 password_salt_position:
                   type: string
-                  enum: *ref_19
+                  enum: *ref_20
                   description: >-
                     The position of the salt relative to the password when the
                     `password_hash` digest was computed: `prefix` for `hash(salt
@@ -27042,7 +27308,7 @@ components:
                         x-exclude-from-lint: true
                     required:
                       - password
-      x-mutually-exclusive-body-groups: *ref_20
+      x-mutually-exclusive-body-groups: *ref_21
     VerifyEmailAddressDto:
       type: object
       properties:
@@ -27149,7 +27415,7 @@ components:
           description: The events that the Webhook Endpoint is subscribed to.
           items:
             type: string
-            enum: &ref_21
+            enum: &ref_22
               - agent.blueprint.created
               - agent.blueprint.deleted
               - agent.blueprint.updated
@@ -27275,7 +27541,7 @@ components:
           description: The events that the Webhook Endpoint is subscribed to.
           items:
             type: string
-            enum: *ref_21
+            enum: *ref_22
           example:
             - user.created
             - dsync.user.created
@@ -27323,7 +27589,7 @@ components:
       required:
         - organization_id
         - user_id
-    TokenBodyDto:
+    TokenQueryDto:
       type: object
       properties:
         client_id:
@@ -28171,6 +28437,63 @@ components:
         - new_instance
         - agent_instance_session_id
         - permissions
+    AgentTokenValidation:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: >-
+            Always `true`: an invalid token is reported as an error with a
+            stable code, never as a `200`.
+          const: true
+        agent_instance_id:
+          type: string
+          description: The agent instance the token was minted for.
+          example: agent_01EHWNCE74X7JSDV0X3SZ3KJNY
+        agent_instance_session_id:
+          type: string
+          description: The agent instance session backing the token.
+          example: agent_session_01EHWNCE74X7JSDV0X3SZ3KJNY
+        organization_id:
+          type: string
+          description: The organization the agent acts within.
+          example: org_01EHWNCE74X7JSDV0X3SZ3KJNY
+        permissions:
+          type: array
+          items:
+            type: string
+          description: The effective permission slugs carried by the token.
+          example:
+            - crm:read
+        intent:
+          type:
+            - string
+            - 'null'
+          description: >-
+            The caller-supplied context echoed into the token at mint time, or
+            `null` when none was given.
+          example: renew-contract-123
+        acting_user_id:
+          type:
+            - string
+            - 'null'
+          description: >-
+            The delegating user carried in the `act.sub` claim of the token, or
+            `null` for autonomous sessions.
+          example: userland_user_01EHWNCE74X7JSDV0X3SZ3KJNY
+        session_expires_at:
+          type: string
+          description: When the backing agent instance session expires.
+          example: '2024-01-01T00:00:00.000Z'
+      required:
+        - valid
+        - agent_instance_id
+        - agent_instance_session_id
+        - organization_id
+        - permissions
+        - intent
+        - acting_user_id
+        - session_expires_at
     AgentInstanceSession:
       type: object
       properties:
@@ -30863,7 +31186,7 @@ components:
           description: >-
             An object containing the custom attribute mapping for the Directory
             Provider.
-          example: &ref_27
+          example: &ref_28
             department: Engineering
             job_title: Software Engineer
         role:
@@ -31057,7 +31380,7 @@ components:
               type: object
               additionalProperties: {}
               description: The event payload.
-              example: &ref_22
+              example: &ref_23
                 id: directory_user_01E1JG7J09H96KYP8HM9B0G5SJ
                 directory_id: directory_01ECAZ4NV9QMV47GW873HDCX74
                 organization_id: org_01EZTR6WYX1A0DSE2CYMGXQ24Y
@@ -31092,11 +31415,11 @@ components:
             - data
             - created_at
           description: An event emitted by WorkOS.
-          example: &ref_32
+          example: &ref_33
             object: event
             id: event_01EHZNVPK3SFK441A1RGBFSHRT
             event: dsync.user.created
-            data: *ref_22
+            data: *ref_23
             created_at: '2021-06-25T19:07:33.155Z'
             context: {}
         - oneOf:
@@ -31296,7 +31619,7 @@ components:
                       description: >-
                         Permission slugs forming the ceiling on what sessions
                         minted from this blueprint may do.
-                      example: &ref_23
+                      example: &ref_24
                         - crm:read
                         - email:send
                     invocable_by:
@@ -31309,7 +31632,7 @@ components:
                           description: >-
                             Role slugs whose members may mint user-delegated
                             sessions from this blueprint.
-                          example: &ref_24
+                          example: &ref_25
                             - manager
                         organization_ids:
                           type: array
@@ -31318,7 +31641,7 @@ components:
                           description: >-
                             Organizations in which autonomous sessions may be
                             minted from this blueprint.
-                          example: &ref_25
+                          example: &ref_26
                             - org_01EHWNCE74X7JSDV0X3SZ3KJNY
                       required:
                         - role_slugs
@@ -31477,7 +31800,7 @@ components:
                       description: >-
                         Permission slugs forming the ceiling on what sessions
                         minted from this blueprint may do.
-                      example: *ref_23
+                      example: *ref_24
                     invocable_by:
                       type: object
                       properties:
@@ -31488,7 +31811,7 @@ components:
                           description: >-
                             Role slugs whose members may mint user-delegated
                             sessions from this blueprint.
-                          example: *ref_24
+                          example: *ref_25
                         organization_ids:
                           type: array
                           items:
@@ -31496,7 +31819,7 @@ components:
                           description: >-
                             Organizations in which autonomous sessions may be
                             minted from this blueprint.
-                          example: *ref_25
+                          example: *ref_26
                       required:
                         - role_slugs
                         - organization_ids
@@ -32532,7 +32855,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted to the API key.
-                      example: &ref_26
+                      example: &ref_27
                         - users:read
                         - users:write
                     created_at:
@@ -32658,7 +32981,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted to the API key.
-                      example: *ref_26
+                      example: *ref_27
                     created_at:
                       type: string
                       description: The timestamp when the API key was created.
@@ -32782,7 +33105,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted to the API key.
-                      example: *ref_26
+                      example: *ref_27
                     created_at:
                       type: string
                       description: The timestamp when the API key was created.
@@ -35649,7 +35972,7 @@ components:
                       description: >-
                         An object containing the custom attribute mapping for
                         the Directory Provider.
-                      example: *ref_27
+                      example: *ref_28
                     role:
                       $ref: '#/components/schemas/SlimRole'
                     roles:
@@ -35839,7 +36162,7 @@ components:
                       description: >-
                         Labels assigned to the Feature Flag for categorizing and
                         filtering.
-                      example: &ref_28
+                      example: &ref_29
                         - reports
                     enabled:
                       type: boolean
@@ -36000,7 +36323,7 @@ components:
                       description: >-
                         Labels assigned to the Feature Flag for categorizing and
                         filtering.
-                      example: *ref_28
+                      example: *ref_29
                     enabled:
                       type: boolean
                       description: >-
@@ -36160,7 +36483,7 @@ components:
                       description: >-
                         Labels assigned to the Feature Flag for categorizing and
                         filtering.
-                      example: *ref_28
+                      example: *ref_29
                     enabled:
                       type: boolean
                       description: >-
@@ -36440,7 +36763,7 @@ components:
                       description: >-
                         Labels assigned to the Feature Flag for categorizing and
                         filtering.
-                      example: *ref_28
+                      example: *ref_29
                     enabled:
                       type: boolean
                       description: >-
@@ -37428,7 +37751,7 @@ components:
                       description: >-
                         Object containing [metadata](/authkit/metadata)
                         key/value pairs associated with the Organization.
-                      example: &ref_29
+                      example: &ref_30
                         tier: diamond
                       propertyNames:
                         maxLength: 40
@@ -37578,7 +37901,7 @@ components:
                       description: >-
                         Object containing [metadata](/authkit/metadata)
                         key/value pairs associated with the Organization.
-                      example: *ref_29
+                      example: *ref_30
                       propertyNames:
                         maxLength: 40
                       maxProperties: 50
@@ -38405,7 +38728,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: &ref_30
+                      example: &ref_31
                         - users:read
                         - users:write
                     created_at:
@@ -38489,7 +38812,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: *ref_30
+                      example: *ref_31
                     created_at:
                       format: date-time
                       type: string
@@ -38571,7 +38894,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: *ref_30
+                      example: *ref_31
                     created_at:
                       format: date-time
                       type: string
@@ -38708,7 +39031,7 @@ components:
                       description: >-
                         Object containing [metadata](/authkit/metadata)
                         key/value pairs associated with the Organization.
-                      example: *ref_29
+                      example: *ref_30
                       propertyNames:
                         maxLength: 40
                       maxProperties: 50
@@ -39579,7 +39902,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: &ref_31
+                      example: &ref_32
                         - users:read
                         - users:write
                     created_at:
@@ -39645,7 +39968,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: *ref_31
+                      example: *ref_32
                     created_at:
                       format: date-time
                       type: string
@@ -39709,7 +40032,7 @@ components:
                       items:
                         type: string
                       description: The permissions granted by the role.
-                      example: *ref_31
+                      example: *ref_32
                     created_at:
                       format: date-time
                       type: string
@@ -40849,7 +41172,7 @@ components:
                 - data
                 - created_at
                 - object
-      example: *ref_32
+      example: *ref_33
       description: An event emitted by WorkOS.
     EventList:
       type: object
@@ -40884,7 +41207,7 @@ components:
       example:
         object: list
         data:
-          - *ref_32
+          - *ref_33
         list_metadata:
           after: event_01EHZNVPK3SFK441A1RGBFSHRT
     JwtTemplate:
