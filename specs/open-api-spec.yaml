@@ -1398,7 +1398,6 @@ paths:
       summary: Link a claim attempt to an external user
       tags:
         - agents.registrations
-      x-feature-flag: agent-auth-public-api
   /agents/credentials/validate:
     post:
       description: >-
@@ -1491,7 +1490,6 @@ paths:
       summary: Validate an agent credential
       tags:
         - agents.registrations
-      x-feature-flag: agent-auth-public-api
   /agents/instances:
     get:
       description: >-
@@ -1730,7 +1728,6 @@ paths:
       summary: Get an agent registration
       tags:
         - agents.registrations
-      x-feature-flag: agent-auth-public-api
   /agents/sessions:
     get:
       description: >-
@@ -10516,6 +10513,21 @@ paths:
                     example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
                 required:
                   - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
         '422':
           description: Unprocessable Entity
           content:
@@ -10657,6 +10669,21 @@ paths:
                   - message
         '404':
           description: Data integration not found for the given provider slug.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
           content:
             application/json:
               schema:
@@ -10898,6 +10925,21 @@ paths:
                     example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
                 required:
                   - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
         '422':
           description: >-
             The matched installation uses a different auth method than this
@@ -10991,6 +11033,21 @@ paths:
                     example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
                 required:
                   - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
         '422':
           description: >-
             The installation uses an auth method that is not yet supported by
@@ -11068,6 +11125,21 @@ paths:
           description: Unauthorized
         '404':
           description: Data integration not found for the given provider slug.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
           content:
             application/json:
               schema:
@@ -22107,6 +22179,21 @@ paths:
                     example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
                 required:
                   - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
       summary: Get a connected account
       tags:
         - user-management.data-providers
@@ -22149,6 +22236,21 @@ paths:
           description: The request is missing a valid API key.
         '404':
           description: The user, organization, or connected account was not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
           content:
             application/json:
               schema:
@@ -22305,6 +22407,21 @@ paths:
           description: The request is missing a valid API key.
         '404':
           description: The user, organization, or connected account was not found.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: A human-readable description of the error.
+                    example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
+                required:
+                  - message
+        '409':
+          description: >-
+            Several connected accounts match this user for the provider; one
+            must be named.
           content:
             application/json:
               schema:
@@ -29126,7 +29243,8 @@ components:
             - 'null'
           description: >-
             The number of days Audit Log events will be retained before being
-            permanently deleted. Valid values are 30 and 365.
+            permanently deleted. Valid values are 30 through 330 in 30-day
+            increments and 365 through 3650 in 365-day increments.
           example: 30
       required:
         - retention_period_in_days
