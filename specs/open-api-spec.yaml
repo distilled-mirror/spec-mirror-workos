@@ -2997,6 +2997,59 @@ paths:
                     example: 'Organization not found: ''org_01EHQMYV6MBK39QC5PZXHY59C3''.'
                 required:
                   - message
+        '429':
+          description: ''
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: rate_limit_exceeded
+                        const: rate_limit_exceeded
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                      retry_after:
+                        type: number
+                        description: Seconds to wait before retrying.
+                        example: 60
+                    required:
+                      - code
+                      - message
+                      - retry_after
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: sms_challenge_rate_limited
+                        const: sms_challenge_rate_limited
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
+                  - type: object
+                    properties:
+                      code:
+                        type: string
+                        description: The error code identifying the type of error.
+                        example: sms_challenge_quota_reached
+                        const: sms_challenge_quota_reached
+                      message:
+                        type: string
+                        description: A human-readable description of the error.
+                        example: Request could not be processed.
+                    required:
+                      - code
+                      - message
       summary: Challenge Factor
       tags:
         - multi-factor-auth
@@ -10712,6 +10765,9 @@ paths:
               example:
                 object: connected_account
                 id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role: compatibility
+                account_identifier: null
+                account_display_name: null
                 user_id: user_01EHZNVPK3SFK441A1RGBFSHRT
                 organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
                 scopes: []
@@ -10991,6 +11047,9 @@ paths:
               example:
                 object: connected_account
                 id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role: compatibility
+                account_identifier: null
+                account_display_name: null
                 user_id: user_01EHZNVPK3SFK441A1RGBFSHRT
                 organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
                 scopes: []
@@ -14762,6 +14821,9 @@ paths:
                 id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
                 user_id: null
                 organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role: compatibility
+                account_identifier: acme-workspace
+                account_display_name: Acme production
                 scopes:
                   - repo
                   - user:email
@@ -14965,6 +15027,9 @@ paths:
                 id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
                 user_id: null
                 organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role: compatibility
+                account_identifier: acme-workspace
+                account_display_name: Acme production
                 scopes:
                   - repo
                   - user:email
@@ -15135,6 +15200,9 @@ paths:
                 id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
                 user_id: null
                 organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role: compatibility
+                account_identifier: acme-workspace
+                account_display_name: Acme production
                 scopes:
                   - repo
                   - user:email
@@ -15275,6 +15343,7 @@ paths:
                       - user:email
                     auth_methods:
                       - oauth
+                    connection_owner: organization
                     ownership: organization
                     created_at: '2024-01-15T10:30:00.000Z'
                     updated_at: '2024-01-15T10:30:00.000Z'
@@ -15287,6 +15356,9 @@ paths:
                       id: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
                       user_id: null
                       organization_id: org_01EHZNVPK3SFK441A1RGBFSHRT
+                      connection_role: compatibility
+                      account_identifier: acme-workspace
+                      account_display_name: Acme production
                       scopes:
                         - repo
                         - user:email
@@ -28210,8 +28282,9 @@ components:
         uri:
           type: string
           description: >-
-            The resource URI. May be a wildcard pattern with a single `*` in the
-            leftmost hostname label, where enabled for the environment.
+            The resource URI. May be a wildcard pattern with a single `*`,
+            either in the leftmost hostname label or as the final path segment,
+            where enabled for the environment.
           example: https://api.example.com
         default:
           type: boolean
@@ -32963,6 +33036,33 @@ components:
           type: string
           description: The unique ID of the connected account.
           example: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+        connection_role:
+          type: string
+          enum:
+            - compatibility
+            - standard
+          description: >-
+            Whether this is the compatibility connection visible to undeclared
+            clients or a standard connection for plural-aware clients.
+            Historical events may omit this field.
+          example: compatibility
+        account_identifier:
+          type:
+            - string
+            - 'null'
+          description: >-
+            A best-effort identifier for the provider account this connection
+            points at. It is not the connection identifier or a selector.
+            Historical events may omit this field.
+          example: workspace_123
+        account_display_name:
+          type:
+            - string
+            - 'null'
+          description: >-
+            A mutable, non-unique display name for the provider account
+            connection. Historical events may omit this field.
+          example: Acme production
         data_integration_id:
           type: string
           description: The unique ID of the data integration.
@@ -32991,6 +33091,24 @@ components:
           example:
             - repo
             - user:email
+        auth_method:
+          type: string
+          enum:
+            - oauth
+            - api_key
+            - client_credentials
+          description: >-
+            How the connection authenticates. Historical events may omit this
+            field.
+          example: oauth
+        api_key_last_4:
+          type:
+            - string
+            - 'null'
+          description: >-
+            The last four characters of the API key, or null for other
+            authentication methods. Historical events may omit this field.
+          example: null
         state:
           type: string
           enum:
@@ -41220,6 +41338,16 @@ components:
                         The ID of the Organization the connection attempt
                         belongs to.
                       example: org_01EHWNCE74X7JSDV0X3SZ3KJNY
+                    account_identifier:
+                      type:
+                        - string
+                        - 'null'
+                      description: >-
+                        A best-effort identifier for the provider account
+                        involved in the attempt. It is not a connection
+                        identifier or selector. Historical events may omit this
+                        field.
+                      example: null
                     error_code:
                       type: string
                       description: A machine-readable error code for the failure.
@@ -41347,6 +41475,16 @@ components:
                         The ID of the Organization the connection attempt
                         belongs to.
                       example: org_01EHWNCE74X7JSDV0X3SZ3KJNY
+                    account_identifier:
+                      type:
+                        - string
+                        - 'null'
+                      description: >-
+                        A best-effort identifier for the provider account
+                        involved in the attempt. It is not a connection
+                        identifier or selector. Historical events may omit this
+                        field.
+                      example: null
                     error_code:
                       type: string
                       description: A machine-readable error code for the failure.
@@ -41532,6 +41670,16 @@ components:
                         The ID of the Organization the connection attempt
                         belongs to.
                       example: org_01EHWNCE74X7JSDV0X3SZ3KJNY
+                    account_identifier:
+                      type:
+                        - string
+                        - 'null'
+                      description: >-
+                        A best-effort identifier for the provider account
+                        involved in the attempt. It is not a connection
+                        identifier or selector. Historical events may omit this
+                        field.
+                      example: null
                     error_code:
                       type: string
                       description: A machine-readable error code for the failure.
@@ -44308,6 +44456,30 @@ components:
                   type: string
                   description: Unique identifier of the installation.
                   example: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+                connection_role:
+                  type: string
+                  enum:
+                    - compatibility
+                    - standard
+                  description: >-
+                    Whether this is the compatibility connection visible to
+                    undeclared clients or a standard connection for plural-aware
+                    clients.
+                  example: compatibility
+                account_identifier:
+                  type:
+                    - string
+                    - 'null'
+                  description: >-
+                    A best-effort provider account identifier used for
+                    correlation, not connection selection.
+                  example: workspace_123
+                account_display_name:
+                  type:
+                    - string
+                    - 'null'
+                  description: A mutable, non-unique display name for this connection.
+                  example: Acme production
                 user_id:
                   type:
                     - string
@@ -44336,6 +44508,9 @@ components:
                   example: cdef
               required:
                 - id
+                - connection_role
+                - account_identifier
+                - account_display_name
                 - user_id
                 - organization_id
                 - api_key_last_4
@@ -44847,6 +45022,33 @@ components:
           type: string
           description: The unique identifier of the connected account.
           example: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+        connection_role:
+          type: string
+          enum:
+            - compatibility
+            - standard
+          description: >-
+            Whether this row is the compatibility connection visible to
+            undeclared clients or a standard peer for plural-aware clients. The
+            role does not indicate preference or creation order.
+          example: compatibility
+        account_identifier:
+          type:
+            - string
+            - 'null'
+          description: >-
+            A best-effort identifier for the provider account this connection
+            points at. It is correlation metadata, not the connection identifier
+            or a selector.
+          example: workspace_123
+        account_display_name:
+          type:
+            - string
+            - 'null'
+          description: >-
+            A mutable, non-unique display name for the provider account
+            connection.
+          example: Acme production
         user_id:
           type:
             - string
@@ -44944,6 +45146,9 @@ components:
       required:
         - object
         - id
+        - connection_role
+        - account_identifier
+        - account_display_name
         - user_id
         - organization_id
         - scopes
@@ -45022,12 +45227,28 @@ components:
                   Defaults to `["oauth"]` if absent.
                 example:
                   - oauth
+              connection_owner:
+                type: string
+                enum:
+                  - user
+                  - organization
+                description: >-
+                  Who owns connections made through this provider: `user` for
+                  connections owned by individual users, or `organization` for a
+                  connection shared by every member of the organization. A
+                  provider row can exist before any connected account does.
+                example: user
               ownership:
                 type: string
                 enum:
                   - userland_user
                   - organization
-                description: Whether the provider is owned by a user or organization.
+                deprecated: true
+                description: >-
+                  Use `connection_owner` instead. Legacy spelling of the same
+                  value: `userland_user` corresponds to `connection_owner:
+                  "user"` and `organization` to `connection_owner:
+                  "organization"`.
               created_at:
                 type: string
                 description: The timestamp when the provider was created.
@@ -45069,6 +45290,34 @@ components:
                         type: string
                         description: The unique identifier of the connected account.
                         example: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+                      connection_role:
+                        type: string
+                        enum:
+                          - compatibility
+                          - standard
+                        description: >-
+                          Whether this row is the compatibility connection
+                          visible to undeclared clients or a standard peer for
+                          plural-aware clients. The role does not indicate
+                          preference or creation order.
+                        example: compatibility
+                      account_identifier:
+                        type:
+                          - string
+                          - 'null'
+                        description: >-
+                          A best-effort identifier for the provider account this
+                          connection points at. It is correlation metadata, not
+                          the connection identifier or a selector.
+                        example: workspace_123
+                      account_display_name:
+                        type:
+                          - string
+                          - 'null'
+                        description: >-
+                          A mutable, non-unique display name for the provider
+                          account connection.
+                        example: Acme production
                       user_id:
                         type:
                           - string
@@ -45193,6 +45442,9 @@ components:
                     required:
                       - object
                       - id
+                      - connection_role
+                      - account_identifier
+                      - account_display_name
                       - user_id
                       - organization_id
                       - scopes
@@ -45217,6 +45469,34 @@ components:
                       type: string
                       description: The unique identifier of the connected account.
                       example: data_installation_01EHZNVPK3SFK441A1RGBFSHRT
+                    connection_role:
+                      type: string
+                      enum:
+                        - compatibility
+                        - standard
+                      description: >-
+                        Whether this row is the compatibility connection visible
+                        to undeclared clients or a standard peer for
+                        plural-aware clients. The role does not indicate
+                        preference or creation order.
+                      example: compatibility
+                    account_identifier:
+                      type:
+                        - string
+                        - 'null'
+                      description: >-
+                        A best-effort identifier for the provider account this
+                        connection points at. It is correlation metadata, not
+                        the connection identifier or a selector.
+                      example: workspace_123
+                    account_display_name:
+                      type:
+                        - string
+                        - 'null'
+                      description: >-
+                        A mutable, non-unique display name for the provider
+                        account connection.
+                      example: Acme production
                     user_id:
                       type:
                         - string
@@ -45336,6 +45616,9 @@ components:
                   required:
                     - object
                     - id
+                    - connection_role
+                    - account_identifier
+                    - account_display_name
                     - user_id
                     - organization_id
                     - scopes
@@ -45360,6 +45643,7 @@ components:
               - integration_type
               - credentials_type
               - scopes
+              - connection_owner
               - ownership
               - created_at
               - updated_at
